@@ -1,130 +1,63 @@
 from db_client import execute_query
-from datetime import datetime
+from typing import List, Tuple, Optional, Union
 
 class PrismaModel:
+    # Operaciones SELECT
     @staticmethod
-    def create_table():
-        """Crea la tabla prismas si no existe"""
-        query = """
-        CREATE TABLE IF NOT EXISTS prismas (
-            id_prisma INT AUTO_INCREMENT PRIMARY KEY,
-            state_prisma INT NOT NULL,
-            estado_prisma INT NOT NULL,
-            nombre_prisma TEXT NOT NULL,
-            perfil_prisma TEXT,
-            hora_prisma DATETIME NOT NULL,
-            angulo_horizontal DECIMAL(15,5),
-            angulo_vertical DECIMAL(15,5),
-            distancia_prisma DECIMAL(15,5) DEFAULT 0,
-            tipoppm_prisma TEXT,
-            ppm_prisma DECIMAL(15,5) DEFAULT 0,
-            presion_prisma DECIMAL(15,5) DEFAULT 0,
-            temperatura_prisma DECIMAL(15,5) DEFAULT 0,
-            constante_prisma DECIMAL(15,5) DEFAULT 0,
-            este_target DECIMAL(15,5) NOT NULL,
-            norte_target DECIMAL(15,5) NOT NULL,
-            elevacion_target DECIMAL(15,5) NOT NULL,
-            altura_reflector DECIMAL(15,5) DEFAULT 0,
-            altura_instrumento DECIMAL(15,5) DEFAULT 0,
-            este_estacion DECIMAL(15,5) DEFAULT 0,
-            norte_estacion DECIMAL(15,5) DEFAULT 0,
-            altura_estacion DECIMAL(15,5) DEFAULT 0,
-            medicion_prisma DECIMAL(15,5) DEFAULT 0,
-            diferencia_tiempocorto DECIMAL(15,5) DEFAULT 0,
-            diferencia_tiempolargo DECIMAL(15,5) DEFAULT 0,
-            diferencia_limitevelocidad DECIMAL(15,5) DEFAULT 0,
-            distancia_horizontal DECIMAL(15,5) DEFAULT 0,
-            diferencia_atipica DECIMAL(15,5) DEFAULT 0,
-            desplaza_longitudinal DECIMAL(15,5) DEFAULT 0,
-            desplaza_transversal DECIMAL(15,5) DEFAULT 0,
-            desplaza_altura DECIMAL(15,5) DEFAULT 0,
-            grupo_puntos TEXT
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-        return execute_query(query)
+    def obtener_celdas_total() -> List[Tuple]:
+        """Obtiene TODAS las celdas sin límite"""
+        query = "SELECT * FROM dd"
+        return execute_query(query) or None
     
     @staticmethod
-    def insert_prisma(data):
-        """Inserta un nuevo prisma"""
-        query = """
-        INSERT INTO prismas (
-            state_prisma, estado_prisma, nombre_prisma, perfil_prisma, hora_prisma,
-            angulo_horizontal, angulo_vertical, este_target, norte_target, elevacion_target
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        return execute_query(query, params=data)
+    def obtener_celdas(limit: int = 100) -> List[tuple]:
+        """Obtiene todas las celdas"""
+        query = f"SELECT * FROM celdas LIMIT {limit}"
+        return execute_query(query) or []
     
     @staticmethod
-    def insert_batch_prismas(batch_data):
-        """Inserta múltiples prismas en un lote"""
-        query = """
-        INSERT INTO prismas (
-            state_prisma, estado_prisma, nombre_prisma, perfil_prisma, hora_prisma,
-            angulo_horizontal, angulo_vertical, este_target, norte_target, elevacion_target
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        return execute_query(query, batch_data=batch_data)
+    def obtener_celda_por_id(celda_id: int) -> Optional[tuple]:
+        """Obtiene una celda por ID"""
+        query = "SELECT * FROM celdas WHERE id = %s"
+        result = execute_query(query, (celda_id,))
+        return result[0] if result else None
+    
+    # Operaciones INSERT
+    @staticmethod
+    def crear_celda(nombre: str, tipo: str) -> bool:
+        """Crea una nueva celda"""
+        query = "INSERT INTO celdas (nombre, tipo) VALUES (%s, %s)"
+        return execute_query(query, (nombre, tipo)) or False
     
     @staticmethod
-    def get_prisma_by_id(prisma_id):
-        """Obtiene un prisma por su ID"""
-        query = "SELECT * FROM prismas WHERE id_prisma = ?"
-        return execute_query(query, params=[prisma_id])
+    def crear_celdas_lote(datos: List[Tuple[str, str]]) -> bool:
+        """Crea múltiples celdas en una sola operación"""
+        query = "INSERT INTO celdas (nombre, tipo) VALUES (?, ?)"
+        return execute_query(query, batch_data=datos) or False
+    
+    # Operaciones UPDATE
+    @staticmethod
+    def actualizar_celda(celda_id: int, nombre: str, tipo: str) -> bool:
+        """Actualiza una celda existente"""
+        query = "UPDATE celdas SET nombre = %s, tipo = %s WHERE id = %s"
+        return execute_query(query, (nombre, tipo, celda_id)) or False
+    
+    # Operaciones DELETE
+    @staticmethod
+    def eliminar_celda(celda_id: int) -> bool:
+        """Elimina una celda"""
+        query = "DELETE FROM celdas WHERE id = %s"
+        return execute_query(query, (celda_id,)) or False
     
     @staticmethod
-    def get_all_prismas(limit=10):
-        """Obtiene todos los prismas con límite opcional"""
-        query = "SELECT * FROM prismas LIMIT ?"
-        return execute_query(query, params=[limit])
+    def eliminar_celdas_por_tipo(tipo: str) -> bool:
+        """Elimina celdas por tipo"""
+        query = "DELETE FROM celdas WHERE tipo = %s"
+        return execute_query(query, (tipo,)) or False
     
+    # Operaciones complejas
     @staticmethod
-    def update_prisma(prisma_id, data):
-        """Actualiza un prisma existente"""
-        query = """
-        UPDATE prismas SET
-            state_prisma = ?, estado_prisma = ?, nombre_prisma = ?, perfil_prisma = ?, hora_prisma = ?,
-            angulo_horizontal = ?, angulo_vertical = ?, este_target = ?, norte_target = ?, elevacion_target = ?
-        WHERE id_prisma = ?
-        """
-        # Agregar el ID al final de los datos
-        data.append(prisma_id)
-        return execute_query(query, params=data)
-    
-    @staticmethod
-    def delete_prisma(prisma_id):
-        """Elimina un prisma por su ID"""
-        query = "DELETE FROM prismas WHERE id_prisma = ?"
-        return execute_query(query, params=[prisma_id])
-    
-    @staticmethod
-    def search_prismas_by_name(name):
-        """Busca prismas por nombre"""
-        query = "SELECT * FROM prismas WHERE nombre_prisma LIKE ?"
-        return execute_query(query, params=[f"%{name}%"])
-    
-    @staticmethod
-    def get_prismas_by_date_range(start_date, end_date):
-        """Obtiene prismas en un rango de fechas"""
-        query = "SELECT * FROM prismas WHERE hora_prisma BETWEEN ? AND ?"
-        return execute_query(query, params=[start_date, end_date])
-    
-    @staticmethod
-    def get_prismas_by_coordinates(min_e, max_e, min_n, max_n):
-        """Obtiene prismas dentro de un área geográfica"""
-        query = """
-        SELECT * FROM prismas 
-        WHERE este_target BETWEEN ? AND ? 
-        AND norte_target BETWEEN ? AND ?
-        """
-        return execute_query(query, params=[min_e, max_e, min_n, max_n])
-    
-    @staticmethod
-    def custom_query(query, params=None):
-        """Ejecuta una consulta personalizada"""
-        return execute_query(query, params=params)
-    
-    @staticmethod
-    def obtener_celdas():
-        """Obtiene todos los prismas con límite opcional"""
-        query = "SELECT * FROM celdas"
-        return execute_query(query)
+    def obtener_celdas_por_tipo(tipo: str) -> List[tuple]:
+        """Obtiene celdas filtradas por tipo"""
+        query = "SELECT * FROM celdas WHERE tipo = %s"
+        return execute_query(query, (tipo,)) or []
